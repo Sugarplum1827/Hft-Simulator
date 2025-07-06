@@ -11,6 +11,7 @@ import io
 from models.engine import TradingEngine
 from models.trader import Trader
 from utils.data_export import DataExporter
+from utils.csv_importer import CSVImporter
 
 # Page configuration
 st.set_page_config(
@@ -27,6 +28,9 @@ if 'engine' not in st.session_state:
     st.session_state.simulation_running = False
     st.session_state.last_update = time.time()
     st.session_state.data_exporter = DataExporter()
+    st.session_state.csv_importer = CSVImporter()
+    st.session_state.custom_symbols = []
+    st.session_state.imported_symbols = []
 
 def create_traders(num_traders, symbols, initial_cash):
     """Create trading bots with specified parameters"""
@@ -155,11 +159,121 @@ with st.sidebar:
     
     # Configuration
     st.subheader("Configuration")
-    symbols = st.multiselect(
-        "Trading Symbols", 
-        ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN"],
-        default=["AAPL", "GOOGL"]
-    )
+    
+    # Symbol configuration tabs
+    symbol_tab1, symbol_tab2 = st.tabs(["🏷️ Select Symbols", "📁 Import CSV"])
+    
+    with symbol_tab1:
+        # Default symbols
+        default_symbols = ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "NVDA", "META", "NFLX", "AMD", "INTC"]
+        
+        # Add custom symbols
+        all_available_symbols = default_symbols + st.session_state.custom_symbols + st.session_state.imported_symbols
+        all_available_symbols = sorted(list(set(all_available_symbols)))
+        
+        symbols = st.multiselect(
+            "Trading Symbols", 
+            all_available_symbols,
+            default=["AAPL", "GOOGL"] if not st.session_state.imported_symbols else st.session_state.imported_symbols[:2]
+        )
+        
+        # Add custom symbol
+        st.write("Add Custom Symbol:")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            custom_symbol = st.text_input("Symbol (e.g., XYZ)", key="custom_symbol_input")
+        with col2:
+            if st.button("Add"):
+                if custom_symbol and custom_symbol.upper() not in all_available_symbols:
+                    st.session_state.custom_symbols.append(custom_symbol.upper())
+                    st.rerun()
+                elif custom_symbol.upper() in all_available_symbols:
+                    st.warning("Symbol already exists")
+    
+    with symbol_tab2:
+        st.write("Import orders from CSV file:")
+        
+        # CSV Upload
+        uploaded_file = st.file_uploader(
+            "Choose CSV file", 
+            type=['csv'],
+            help="Upload a CSV file with columns: trader_id, symbol, side, quantity, price, timestamp (optional)"
+        )
+        
+        # Sample CSV download
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Download Sample CSV"):
+                sample_csv = st.session_state.csv_importer.get_sample_csv_format()
+                st.download_button(
+                    label="📥 Download Sample",
+                    data=sample_csv,
+                    file_name="sample_trades.csv",
+                    mime="text/csv"
+                )
+        
+        with col2:
+            # Load provided sample
+            if st.button("Load Provided Sample"):
+                try:
+                    with open("sample_trades.csv", "r") as f:
+                        sample_content = f.read()
+                    
+                    validation = st.session_state.csv_importer.validate_csv_format(sample_content)
+                    if validation['success']:
+                        st.session_state.imported_symbols = validation['symbols']
+                        st.success(f"Sample loaded! Found {validation['row_count']} orders for symbols: {', '.join(validation['symbols'])}")
+                        st.rerun()
+                    else:
+                        st.error(f"Sample file error: {validation['error']}")
+                except Exception as e:
+                    st.error(f"Error loading sample: {e}")
+        
+        # Process uploaded file
+        if uploaded_file is not None:
+            try:
+                csv_content = uploaded_file.getvalue().decode('utf-8')
+                
+                # Validate CSV
+                validation = st.session_state.csv_importer.validate_csv_format(csv_content)
+                
+                if validation['success']:
+                    st.success(f"✅ CSV Valid: {validation['row_count']} rows")
+                    
+                    # Show preview
+                    st.write("**Preview:**")
+                    preview_df = pd.DataFrame(validation['preview'])
+                    st.dataframe(preview_df, use_container_width=True)
+                    
+                    # Show symbols found
+                    st.write(f"**Symbols found:** {', '.join(validation['symbols'])}")
+                    st.write(f"**Traders found:** {', '.join(validation['traders'])}")
+                    
+                    # Import button
+                    if st.button("Import Orders", key="import_csv_orders"):
+                        result = st.session_state.csv_importer.import_orders_from_csv(csv_content, st.session_state.engine)
+                        
+                        if result['success']:
+                            st.session_state.imported_symbols = result['symbols_imported']
+                            st.success(f"✅ Imported {result['orders_submitted']} orders!")
+                            if result['orders_failed'] > 0:
+                                st.warning(f"⚠️ {result['orders_failed']} orders failed")
+                                with st.expander("View Errors"):
+                                    for error in result['errors']:
+                                        st.text(error)
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Import failed: {result['error']}")
+                else:
+                    st.error(f"❌ CSV validation failed: {validation['error']}")
+                    
+                    if 'required_columns' in validation:
+                        st.write("**Required columns:**", ", ".join(validation['required_columns']))
+                    if 'found_columns' in validation:
+                        st.write("**Found columns:**", ", ".join(validation['found_columns']))
+                        
+            except Exception as e:
+                st.error(f"Error processing file: {e}")
     
     num_traders = st.slider("Number of Trading Bots", 1, 20, 5)
     initial_cash = st.number_input("Initial Cash per Bot", 10000, 1000000, 100000)

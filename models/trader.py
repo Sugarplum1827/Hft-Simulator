@@ -65,7 +65,7 @@ class Trader:
         while self.is_active:
             try:
                 # Random delay between orders
-                delay = random.exponential(self.order_frequency)
+                delay = np.random.exponential(self.order_frequency)
                 time.sleep(delay)
                 
                 if not self.is_active:

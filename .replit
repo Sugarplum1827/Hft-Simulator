@@ -2,6 +2,7 @@ modules = ["python-3.11"]
 
 [nix]
 channel = "stable-24_05"
+packages = ["gcc", "cmake", "pkg-config", "qt6.qtbase", "qt6.qttools"]
 
 [deployment]
 deploymentTarget = "autoscale"
