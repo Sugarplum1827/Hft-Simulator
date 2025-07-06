@@ -18,9 +18,9 @@ TradingEngine::TradingEngine(QObject* parent)
     connect(processingTimer, &QTimer::timeout, this, &TradingEngine::processOrders);
     connect(statsTimer, &QTimer::timeout, this, &TradingEngine::updateStats);
     
-    // Set timer intervals
+    // Set timer intervals (optimized for HFT)
     processingTimer->setSingleShot(false);
-    processingTimer->setInterval(1); // 1ms for high frequency processing
+    processingTimer->setInterval(0); // 0ms for maximum HFT performance
     
     statsTimer->setSingleShot(false);
     statsTimer->setInterval(1000); // 1 second for stats updates
@@ -280,8 +280,8 @@ void TradingEngine::processOrders() {
         return;
     }
     
-    // Process up to 10 orders per cycle to prevent blocking
-    int ordersToProcess = qMin(10, orderQueue.size());
+    // Process up to 50 orders per cycle for HFT performance
+    int ordersToProcess = qMin(50, orderQueue.size());
     
     for (int i = 0; i < ordersToProcess; ++i) {
         QMutexLocker locker(&orderQueueMutex);

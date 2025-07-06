@@ -19,7 +19,7 @@ Trader::Trader(const QString& traderId, double initialCash,
     , minOrderSize(10)
     , maxOrderSize(100)
     , priceVolatility(0.02)  // 2% price variation
-    , orderFrequencyMs(500)  // 500ms between orders
+    , orderFrequencyMs(50)   // 50ms between orders for HFT speed
     , active(false)
     , tradingTimer(new QTimer(this))
     , random(QRandomGenerator::global())

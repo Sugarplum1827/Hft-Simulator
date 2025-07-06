@@ -1,6 +1,8 @@
-# HFT Trading Simulation - C++ Desktop Application
+# C++ HFT Trading Simulation - Desktop Application
 
-A comprehensive high-frequency trading simulation built with Qt 6 and C++17, featuring real-time order matching, multi-threaded trading bots, and a modern GUI interface.
+A high-performance trading simulation built with Qt 6 and C++17, featuring sub-millisecond order matching, multi-threaded architecture, and professional GUI interface.
+
+![C++ HFT Simulator](https://img.shields.io/badge/C++-HFT_Simulator-blue.svg) ![Qt6](https://img.shields.io/badge/Qt6-Desktop_App-green.svg) ![Performance](https://img.shields.io/badge/Performance-10000+_TPS-red.svg)
 
 ## Features
 
